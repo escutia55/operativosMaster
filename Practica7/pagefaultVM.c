@@ -39,23 +39,23 @@ int pagefault(char *vaddress)
     char buffer[PAGESIZE];
     int pag_del_proceso;
     long OldPage;
-    int vmframe;
+    int frame;
 
     // A partir de la dirección que provocó el fallo, calculamos la página
     pag_del_proceso=(long) vaddress>>12;
 
 
     // Si la página del proceso está en un marco virtual del disco
-    vmframe = getfreeframeVM();
-    if(-1 != vmframe)
+    frame = getfreeframeVM();
+
+    if(-1 != frame)
     {
 		// Lee el marco virtual al buffer
-        readblock(buffer, vmframe);
+        readblock(buffer, frame);
         // Libera el frame virtual
-        systemframetable[vmframe].assigned=1;
+        systemframetable[frame].assigned=0;
 
     }
-
 
     // Cuenta los marcos asignados al proceso
     i=countframesassigned();
@@ -85,6 +85,7 @@ int pagefault(char *vaddress)
         // Copia el frame a memoria secundaria, actualiza la tabla de páginas y libera el marco de la memoria principal
     }
 
+
     // Busca un marco físico libre en el sistema
 	// Si no hay marcos físicos libres en el sistema regresa error
     {
@@ -104,16 +105,16 @@ int pagefault(char *vaddress)
 
 
 int get_OldPage(){
-  unsigned long tarrivedOld = ptbr->tarrived;
+  unsigned long tlastaccessOld = ptbr->tlastaccess;
   int oldPage = 0;
 
-    for (int i = 0; i < PAGES; i++) { 
-      if(((ptbr+i)->tarrived  < tarrivedOld) && ((ptbr+i)->presente == 1) && ((ptbr+i)->tarrived != 0)){ 
-        tarrivedOld = (ptbr+i)->tarrived; //pagina mas vieja que este presente
+    for (int i = 1; i < PAGES; i++) { 
+      if(((ptbr+i)->tlastaccess  > tlastaccessOld) && ((ptbr+i)->presente == 1) && ((ptbr+i)->tlastaccess != 0)){ 
+        tlastaccessOld = (ptbr+i)->tlastaccess; //pagina mas vieja que este presente
         oldPage = i;
       }
-      else
-        tarrivedOld = ptbr->tarrived;
+      //else
+        //tlastaccessOld = ptbr->tlastaccess;
     }
 
   return oldPage; 
@@ -129,7 +130,7 @@ int getfreeframeVM()
             systemframetable[i].assigned=1;
             break;
         }
-    if(i<systemframetablesize+framesbegin)
+    if(i<systemframetablesize*2+framesbegin)
         systemframetable[i].assigned=1;
     else
         i=-1;
